@@ -4,10 +4,15 @@ import { ValidationPipe, INestApplication } from '@nestjs/common'
 const request = require('supertest') as typeof import('supertest')
 import { ResumeController } from './resume.controller'
 import { ResumeService } from './resume.service'
+import { AnalysisService } from './analysis.service'
 
 const mockResumeService = {
   extractFromPdf: jest.fn(),
   normaliseText: jest.fn(),
+}
+
+const mockAnalysisService = {
+  analyseResume: jest.fn(),
 }
 
 describe('ResumeController (integration)', () => {
@@ -16,7 +21,10 @@ describe('ResumeController (integration)', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ResumeController],
-      providers: [{ provide: ResumeService, useValue: mockResumeService }],
+      providers: [
+        { provide: ResumeService, useValue: mockResumeService },
+        { provide: AnalysisService, useValue: mockAnalysisService },
+      ],
     }).compile()
 
     app = module.createNestApplication()
