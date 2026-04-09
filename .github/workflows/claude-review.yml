@@ -1,0 +1,27 @@
+name: Claude Code Review
+
+# Triggers whenever someone posts a comment on a PR or an inline review comment.
+# The action only acts when the comment contains @claude — all other comments are ignored.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  claude-response:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read        # read the codebase so Claude can review it
+      pull-requests: write  # post the review as a PR comment
+      issues: write         # needed for issue_comment events on PRs
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
