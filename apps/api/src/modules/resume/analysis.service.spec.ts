@@ -126,6 +126,30 @@ describe('AnalysisService', () => {
     })
   })
 
+  // ─── Missing API key ──────────────────────────────────────────────────────
+
+  describe('missing API key', () => {
+    let keylessService: AnalysisService
+
+    beforeEach(async () => {
+      delete process.env['ANTHROPIC_API_KEY']
+      const module = await Test.createTestingModule({
+        providers: [AnalysisService],
+      }).compile()
+      keylessService = module.get(AnalysisService)
+    })
+
+    afterEach(() => {
+      process.env['ANTHROPIC_API_KEY'] = 'test-key-for-unit-tests'
+    })
+
+    it('throws InternalServerErrorException when ANTHROPIC_API_KEY is not set', async () => {
+      await expect(keylessService.analyseResume('A'.repeat(200))).rejects.toThrow(
+        InternalServerErrorException,
+      )
+    })
+  })
+
   // ─── Error handling ───────────────────────────────────────────────────────
 
   describe('error handling', () => {
