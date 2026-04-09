@@ -31,18 +31,15 @@ export class ResumeController {
         fileSize: 5 * 1024 * 1024, // 5MB max file size
       },
       fileFilter: (_req, file, callback) => {
-        // Reject anything that isn't a PDF before it reaches the service
-        if (file.mimetype !== 'application/pdf') {
-          callback(new BadRequestException('Only PDF files are accepted'), false)
-        } else {
-          callback(null, true)
-        }
+        // Silently reject non-PDFs — the null-file check below throws the
+        // proper NestJS exception through the exception filter pipeline.
+        callback(null, file.mimetype === 'application/pdf')
       },
     }),
   )
   async uploadResume(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException('No file provided. Please upload a PDF.')
+      throw new BadRequestException('Only PDF files are accepted. Please upload a valid PDF.')
     }
 
     const result = await this.resumeService.extractFromPdf(file.buffer, file.originalname)
@@ -64,10 +61,6 @@ export class ResumeController {
   // ─────────────────────────────────────────────────────────────
   @Post('text')
   submitText(@Body() dto: ResumeTextDto) {
-    if (!dto.text) {
-      throw new BadRequestException('No text provided. Please paste your resume content.')
-    }
-
     const result = this.resumeService.normaliseText(dto.text)
 
     return {

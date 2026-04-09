@@ -1,6 +1,10 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common'
 import pdfParse from 'pdf-parse'
 
+// Minimum character threshold for a resume to be considered valid.
+// Applied to both PDF-extracted text and pasted text.
+const MIN_RESUME_LENGTH = 50
+
 export interface ExtractedResume {
   // The cleaned plain text content of the resume
   text: string
@@ -29,7 +33,7 @@ export class ResumeService {
       )
     }
 
-    if (!parsed.text || parsed.text.trim().length < 50) {
+    if (!parsed.text || parsed.text.trim().length < MIN_RESUME_LENGTH) {
       throw new UnprocessableEntityException(
         'No readable text found in this PDF. ' +
           'The file may be a scanned image. Please paste the resume text instead.',
@@ -50,7 +54,7 @@ export class ResumeService {
   // so analysis always receives consistent input.
   // ─────────────────────────────────────────────────────────────
   normaliseText(rawText: string): ExtractedResume {
-    if (!rawText || rawText.trim().length < 50) {
+    if (!rawText || rawText.trim().length < MIN_RESUME_LENGTH) {
       throw new UnprocessableEntityException(
         'The pasted text is too short to be a valid resume. ' +
           'Please paste the full resume content.',

@@ -150,6 +150,7 @@ export function ResumeUploader() {
                 {result.source === 'pdf' ? 'PDF' : 'Text'}
               </Badge>
               <button
+                type="button"
                 onClick={reset}
                 className="text-xs text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400"
               >
