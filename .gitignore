@@ -49,9 +49,8 @@ prisma/migrations/dev.db
 # Project docs — local only, not part of the codebase
 _docs/
 
-# Claude Code
+# Claude Code — CLAUDE.md is intentionally committed (needed by the GitHub App for PR reviews)
 AGENTS.md
-CLAUDE.md
 
 # Misc
 *.tsbuildinfo
