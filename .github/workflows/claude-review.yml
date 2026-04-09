@@ -16,6 +16,7 @@ jobs:
       contents: read        # read the codebase so Claude can review it
       pull-requests: write  # post the review as a PR comment
       issues: write         # needed for issue_comment events on PRs
+      id-token: write       # required for OIDC token fetch by claude-code-action
 
     steps:
       - uses: actions/checkout@v4
