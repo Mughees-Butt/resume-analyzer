@@ -20,7 +20,8 @@ export async function uploadResumePdf(file: File): Promise<UploadResult> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error((err as { message?: string }).message ?? 'Upload failed')
+    const raw = (err as { message?: string | string[] }).message
+    throw new Error((Array.isArray(raw) ? raw.join('. ') : raw) ?? 'Upload failed')
   }
 
   return res.json() as Promise<UploadResult>
@@ -36,7 +37,8 @@ export async function submitResumeText(text: string): Promise<UploadResult> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error((err as { message?: string }).message ?? 'Submission failed')
+    const raw = (err as { message?: string | string[] }).message
+    throw new Error((Array.isArray(raw) ? raw.join('. ') : raw) ?? 'Submission failed')
   }
 
   return res.json() as Promise<UploadResult>
