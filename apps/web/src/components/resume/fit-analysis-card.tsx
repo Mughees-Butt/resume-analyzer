@@ -25,8 +25,8 @@ export function FitAnalysisCard({ fit }: FitAnalysisCardProps) {
                 Aligned skills
               </p>
               <ul className="flex flex-col gap-1">
-                {fit.alignedSkills.map((skill) => (
-                  <li key={skill} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                {fit.alignedSkills.map((skill, i) => (
+                  <li key={`${skill}-${i}`} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <span className="text-emerald-500" aria-hidden="true">✓</span>
                     {skill}
                   </li>
@@ -42,8 +42,8 @@ export function FitAnalysisCard({ fit }: FitAnalysisCardProps) {
                 Gaps / missing
               </p>
               <ul className="flex flex-col gap-1">
-                {fit.gaps.map((gap) => (
-                  <li key={gap} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                {fit.gaps.map((gap, i) => (
+                  <li key={`${gap}-${i}`} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <span className="text-amber-500" aria-hidden="true">⚠</span>
                     {gap}
                   </li>

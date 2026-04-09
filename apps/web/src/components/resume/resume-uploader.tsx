@@ -9,7 +9,7 @@ import { DropZone } from './drop-zone'
 import { JdInput } from './jd-input'
 import { ProfileCard } from './profile-card'
 import { FitAnalysisCard } from './fit-analysis-card'
-import { uploadResumePdf, analyseResume } from '@/lib/api-client'
+import { uploadResumePdf, submitResumeText, analyseResume } from '@/lib/api-client'
 import type { AnalyseResult } from '@/lib/api-client'
 
 // ─── State machine ────────────────────────────────────────────────────────────
@@ -68,7 +68,8 @@ export function ResumeUploader() {
         const extracted = await uploadResumePdf(resumeFile!)
         extractedText = extracted.text
       } else {
-        extractedText = resumeText.trim()
+        const cleaned = await submitResumeText(resumeText)
+        extractedText = cleaned.text
       }
 
       const data = await analyseResume(extractedText, jdText.trim() || undefined)

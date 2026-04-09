@@ -41,8 +41,8 @@ function StackGroup({ label, items }: { label: string; items: string[] }) {
         {label}
       </p>
       <div className="flex flex-wrap gap-1.5">
-        {items.map((item) => (
-          <Badge key={item} variant="secondary" className="text-xs">
+        {items.map((item, i) => (
+          <Badge key={`${item}-${i}`} variant="secondary" className="text-xs">
             {item}
           </Badge>
         ))}
@@ -121,9 +121,9 @@ export function ProfileCard({ profile, mode, onReset }: ProfileCardProps) {
               Strong zones
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {profile.strongZones.map((zone) => (
+              {profile.strongZones.map((zone, i) => (
                 <span
-                  key={zone}
+                  key={`${zone}-${i}`}
                   className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                 >
                   {zone}
