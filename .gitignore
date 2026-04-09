@@ -46,6 +46,9 @@ coverage/
 # Prisma
 prisma/migrations/dev.db
 
+# Project docs — local only, not part of the codebase
+_docs/
+
 # Claude Code
 AGENTS.md
 CLAUDE.md
