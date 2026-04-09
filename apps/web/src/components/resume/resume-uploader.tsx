@@ -3,49 +3,79 @@
 import { useState } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { DropZone } from './drop-zone'
-import { TextPaste } from './text-paste'
-import { uploadResumePdf, submitResumeText, type UploadResult } from '@/lib/api-client'
+import { JdInput } from './jd-input'
+import { ProfileCard } from './profile-card'
+import { FitAnalysisCard } from './fit-analysis-card'
+import { uploadResumePdf, analyseResume } from '@/lib/api-client'
+import type { AnalyseResult } from '@/lib/api-client'
 
 // ─── State machine ────────────────────────────────────────────────────────────
-type Status = 'idle' | 'loading' | 'success' | 'error'
+// idle     → user is setting up inputs
+// loading  → extraction + analysis in flight
+// analysed → profile is ready to display
+// error    → something went wrong, form stays visible
+type Status = 'idle' | 'loading' | 'analysed' | 'error'
+
+// Minimum chars for pasted resume text (mirrors the API guard)
+const MIN_RESUME_LENGTH = 50
 
 export function ResumeUploader() {
   const [status, setStatus] = useState<Status>('idle')
-  const [result, setResult] = useState<UploadResult | null>(null)
+  const [result, setResult] = useState<AnalyseResult | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  // Resume input — either a staged File (PDF tab) or raw text (paste tab)
+  const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [resumeText, setResumeText] = useState('')
+  const [activeTab, setActiveTab] = useState<'pdf' | 'text'>('pdf')
+
+  // Job description — always optional
+  const [jdText, setJdText] = useState('')
 
   const isLoading = status === 'loading'
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // Resume is ready when a file is staged OR enough text is pasted
+  const resumeReady =
+    activeTab === 'pdf'
+      ? resumeFile !== null
+      : resumeText.trim().length >= MIN_RESUME_LENGTH
 
-  async function handleFile(file: File) {
-    setStatus('loading')
-    setResult(null)
+  // Mode updates dynamically as JD is filled in
+  const mode: 'resume-only' | 'jd' = jdText.trim().length > 0 ? 'jd' : 'resume-only'
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  // Called by DropZone when a valid PDF is selected — stages without submitting
+  function handleFileStaged(file: File) {
+    setResumeFile(file)
     setErrorMsg(null)
-
-    try {
-      const data = await uploadResumePdf(file)
-      setResult(data)
-      setStatus('success')
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Upload failed. Please try again.')
-      setStatus('error')
-    }
   }
 
-  async function handleText(text: string) {
+  // Single submit — chains extraction (PDF path) + analysis
+  async function handleAnalyse() {
+    if (!resumeReady || isLoading) return
     setStatus('loading')
-    setResult(null)
     setErrorMsg(null)
+    setResult(null)
 
     try {
-      const data = await submitResumeText(text)
+      let extractedText: string
+
+      if (activeTab === 'pdf') {
+        const extracted = await uploadResumePdf(resumeFile!)
+        extractedText = extracted.text
+      } else {
+        extractedText = resumeText.trim()
+      }
+
+      const data = await analyseResume(extractedText, jdText.trim() || undefined)
       setResult(data)
-      setStatus('success')
+      setStatus('analysed')
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Submission failed. Please try again.')
+      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       setStatus('error')
     }
   }
@@ -54,122 +84,158 @@ export function ResumeUploader() {
     setStatus('idle')
     setResult(null)
     setErrorMsg(null)
+    setResumeFile(null)
+    setResumeText('')
+    setJdText('')
+    setActiveTab('pdf')
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render: analysed state ────────────────────────────────────────────────
+
+  if (status === 'analysed' && result) {
+    return (
+      <div className="w-full max-w-3xl space-y-4">
+        <ProfileCard profile={result.profile} mode={result.mode} onReset={reset} />
+        {result.profile.fitAnalysis && (
+          <FitAnalysisCard fit={result.profile.fitAnalysis} />
+        )}
+      </div>
+    )
+  }
+
+  // ── Render: input / loading / error states ────────────────────────────────
 
   return (
-    <div className="w-full max-w-2xl space-y-6">
-      {/* Input card — hidden once a result is shown */}
-      {status !== 'success' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Upload your resume</CardTitle>
-            <CardDescription>
-              Drop a PDF or paste the text directly. We&apos;ll extract the content and
-              generate a structured skill profile with interview questions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* force flex-col — the shadcn Tabs root defaults to flex-row
-                when the data-horizontal variant doesn't resolve correctly */}
-            <Tabs defaultValue="pdf" className="flex-col gap-4">
-              <TabsList className="w-full">
-                <TabsTrigger value="pdf" className="flex-1">
-                  PDF upload
-                </TabsTrigger>
-                <TabsTrigger value="text" className="flex-1">
-                  Paste text
-                </TabsTrigger>
-              </TabsList>
+    <div className="w-full max-w-3xl space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Analyse a resume</CardTitle>
+          <CardDescription>
+            Upload or paste a resume. Optionally add a job description for role-specific
+            fit analysis and targeted questions.
+          </CardDescription>
+        </CardHeader>
 
-              <TabsContent value="pdf">
-                <DropZone onFile={handleFile} disabled={isLoading} />
-              </TabsContent>
+        <CardContent className="flex flex-col gap-6">
+          {/* Two-column input area */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 
-              <TabsContent value="text">
-                <TextPaste onText={handleText} disabled={isLoading} />
-              </TabsContent>
-            </Tabs>
-
-            {/* Loading state */}
-            {isLoading && (
-              <div className="mt-4 flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  />
-                </svg>
-                Extracting resume content…
-              </div>
-            )}
-
-            {/* Error state */}
-            {status === 'error' && errorMsg && (
-              <div
-                role="alert"
-                className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"
+            {/* LEFT — Resume input */}
+            <div className="flex flex-col gap-3">
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Resume</p>
+              <Tabs
+                defaultValue="pdf"
+                className="flex-col gap-3"
+                onValueChange={(v) => {
+                  setActiveTab(v as 'pdf' | 'text')
+                  setErrorMsg(null)
+                }}
               >
-                {errorMsg}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                <TabsList className="w-full">
+                  <TabsTrigger value="pdf" className="flex-1">PDF upload</TabsTrigger>
+                  <TabsTrigger value="text" className="flex-1">Paste text</TabsTrigger>
+                </TabsList>
 
-      {/* Result card */}
-      {status === 'success' && result && (
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div className="space-y-1">
-              <CardTitle className="text-xl">Resume extracted</CardTitle>
-              <CardDescription>
-                {result.fileName
-                  ? `${result.fileName}${result.pageCount ? ` · ${result.pageCount} page${result.pageCount > 1 ? 's' : ''}` : ''}`
-                  : 'Pasted text'}
-              </CardDescription>
+                <TabsContent value="pdf">
+                  <DropZone onFile={handleFileStaged} disabled={isLoading} />
+                  {resumeFile && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                      <span aria-hidden="true">✓</span>
+                      {resumeFile.name}
+                    </p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="text">
+                  <Textarea
+                    placeholder="Paste resume text here…"
+                    value={resumeText}
+                    onChange={(e) => {
+                      setResumeText(e.target.value)
+                      if (errorMsg) setErrorMsg(null)
+                    }}
+                    disabled={isLoading}
+                    className="h-52 resize-none overflow-y-auto font-mono text-sm leading-relaxed"
+                    aria-label="Resume text"
+                  />
+                  {resumeText.trim().length > 0 && (
+                    <p
+                      className={[
+                        'mt-1.5 text-right text-xs',
+                        resumeText.trim().length < MIN_RESUME_LENGTH
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-zinc-500 dark:text-zinc-400',
+                      ].join(' ')}
+                    >
+                      {resumeText.trim().length.toLocaleString()} chars
+                      {resumeText.trim().length < MIN_RESUME_LENGTH &&
+                        ` — need at least ${MIN_RESUME_LENGTH}`}
+                    </p>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">
-                {result.source === 'pdf' ? 'PDF' : 'Text'}
-              </Badge>
-              <button
-                type="button"
-                onClick={reset}
-                className="text-xs text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400"
-              >
-                Start over
-              </button>
+
+            {/* RIGHT — Job Description input */}
+            <JdInput value={jdText} onChange={setJdText} disabled={isLoading} />
+          </div>
+
+          {/* Error banner */}
+          {status === 'error' && errorMsg && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"
+            >
+              {errorMsg}
             </div>
-          </CardHeader>
-          <CardContent>
-            {/* Extracted text preview — fixed height, scrolls internally */}
-            <pre className="h-64 overflow-y-auto whitespace-pre-wrap rounded-lg bg-zinc-50 p-4 font-mono text-xs leading-relaxed text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
-              {result.text}
-            </pre>
-            <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-              {result.text.length.toLocaleString()} characters extracted.{' '}
-              AI analysis coming in Phase 2.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+          )}
+
+          {/* Mode indicator + Analyse button */}
+          <div className="flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">
+            <span
+              className={[
+                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                mode === 'jd'
+                  ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
+                  : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'h-1.5 w-1.5 rounded-full',
+                  mode === 'jd' ? 'bg-violet-500' : 'bg-zinc-400',
+                ].join(' ')}
+                aria-hidden="true"
+              />
+              {mode === 'jd' ? 'Resume + Job Description' : 'Resume only'}
+            </span>
+
+            <Button
+              type="button"
+              disabled={!resumeReady || isLoading}
+              onClick={handleAnalyse}
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                  Analysing…
+                </span>
+              ) : (
+                'Analyse resume →'
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
