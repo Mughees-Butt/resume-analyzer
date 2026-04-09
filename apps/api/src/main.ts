@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core'
+import { ValidationPipe } from '@nestjs/common'
 import { AppModule } from './app.module.js'
 
 async function bootstrap() {
@@ -6,6 +7,9 @@ async function bootstrap() {
 
   // Global API prefix — all routes will be under /api
   app.setGlobalPrefix('api')
+
+  // Validate and strip unknown fields on all incoming request bodies
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
 
   // CORS — allow the Next.js frontend to call the API in development
   app.enableCors({
