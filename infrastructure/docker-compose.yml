@@ -1,0 +1,53 @@
+services:
+
+  # ─────────────────────────────────────────────────────────────
+  # PostgreSQL — primary database
+  # Accessible at localhost:5432
+  # ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: resume-analyzer-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: resume_analyzer
+    volumes:
+      # Named volume — data persists between container restarts
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d resume_analyzer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ─────────────────────────────────────────────────────────────
+  # Redis — job queue store (used by BullMQ)
+  # Accessible at localhost:6379
+  # ─────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: resume-analyzer-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      # Named volume — data persists between container restarts
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    command: redis-server --appendonly yes
+
+# ─────────────────────────────────────────────────────────────
+# Named volumes — managed by Docker, survive container restarts
+# ─────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  redis_data:
