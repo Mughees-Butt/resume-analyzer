@@ -14,6 +14,14 @@ jobs:
     name: Deploy Next.js to Vercel
     runs-on: ubuntu-latest
 
+    # Map secrets to env vars at job level.
+    # This allows us to check if they are set before attempting deployment.
+    # If VERCEL_TOKEN is not configured, the deploy step is skipped cleanly.
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,20 +39,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Only runs if VERCEL_TOKEN secret is configured in GitHub repo settings.
+      # Skips cleanly with no error if the secret is not yet set.
       - name: Deploy to Vercel
+        if: env.VERCEL_TOKEN != ''
         working-directory: apps/web
-        run: |
-          pnpm dlx vercel --prod \
-            --token=${{ secrets.VERCEL_TOKEN }} \
-            --yes
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: pnpm dlx vercel --prod --token=$VERCEL_TOKEN --yes
 
 # ─────────────────────────────────────────────────────────────
-# Required GitHub Secrets (set in repo Settings → Secrets)
+# Required GitHub Secrets (repo Settings → Secrets → Actions)
 # ─────────────────────────────────────────────────────────────
-# VERCEL_TOKEN       → Vercel account token (vercel.com → Settings → Tokens)
-# VERCEL_ORG_ID      → Found in vercel.com → Settings → General
-# VERCEL_PROJECT_ID  → Found after running `vercel link` in apps/web
+# VERCEL_TOKEN       → vercel.com → Settings → Tokens → Create
+# VERCEL_ORG_ID      → vercel.com → Settings → General → Your ID
+# VERCEL_PROJECT_ID  → run `vercel link` in apps/web, then check .vercel/project.json
 # ─────────────────────────────────────────────────────────────

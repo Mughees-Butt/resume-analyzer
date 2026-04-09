@@ -14,6 +14,12 @@ jobs:
     name: Deploy NestJS to Railway
     runs-on: ubuntu-latest
 
+    # Map secrets to env vars at job level.
+    # This allows us to check if they are set before attempting deployment.
+    # If RAILWAY_TOKEN is not configured, the deploy step is skipped cleanly.
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,20 +37,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Install Railway CLI globally so it is available in PATH for the deploy step.
+      # pnpm dlx was wrong here — it runs in a temporary context and does not
+      # persist the binary. npm install -g puts it in the system PATH correctly.
       - name: Install Railway CLI
-        run: pnpm dlx @railway/cli --version
+        run: npm install -g @railway/cli
 
+      # Only runs if RAILWAY_TOKEN secret is configured in GitHub repo settings.
+      # Skips cleanly with no error if the secret is not yet set.
       - name: Deploy to Railway
+        if: env.RAILWAY_TOKEN != ''
         working-directory: apps/api
         run: railway up --service resume-analyzer-api --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
 # ─────────────────────────────────────────────────────────────
-# Required GitHub Secrets (set in repo Settings → Secrets)
+# Required GitHub Secrets (repo Settings → Secrets → Actions)
 # ─────────────────────────────────────────────────────────────
-# RAILWAY_TOKEN  → Railway account token (railway.app → Account → Tokens)
+# RAILWAY_TOKEN  → railway.app → Account Settings → Tokens → Create
 #
-# The --detach flag means the pipeline does not wait for the deploy
-# to finish — Railway handles the rollout asynchronously.
+# The --detach flag means the pipeline does not wait for the full
+# rollout — Railway handles the deployment asynchronously.
 # ─────────────────────────────────────────────────────────────
