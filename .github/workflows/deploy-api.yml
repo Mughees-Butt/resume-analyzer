@@ -1,0 +1,51 @@
+name: Deploy API
+
+# ─────────────────────────────────────────────────────────────
+# Triggers
+# Only runs when code is merged into main.
+# CI must pass first — if CI fails, this never runs.
+# ─────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-api:
+    name: Deploy NestJS to Railway
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: pnpm dlx @railway/cli --version
+
+      - name: Deploy to Railway
+        working-directory: apps/api
+        run: railway up --service resume-analyzer-api --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+# ─────────────────────────────────────────────────────────────
+# Required GitHub Secrets (set in repo Settings → Secrets)
+# ─────────────────────────────────────────────────────────────
+# RAILWAY_TOKEN  → Railway account token (railway.app → Account → Tokens)
+#
+# The --detach flag means the pipeline does not wait for the deploy
+# to finish — Railway handles the rollout asynchronously.
+# ─────────────────────────────────────────────────────────────

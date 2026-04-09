@@ -1,0 +1,60 @@
+name: CI
+
+# ─────────────────────────────────────────────────────────────
+# Triggers
+# Runs on every push to any branch.
+# Runs on every pull request targeting main or dev.
+# ─────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  ci:
+    name: Type-check, Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the full repo history so Turborepo cache works correctly
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Install pnpm before Node so the Node setup can cache pnpm's store
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      # 3. Install Node.js and enable pnpm store caching
+      #    This caches node_modules across runs — dramatically speeds up CI
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      # 4. Install all workspace dependencies using the frozen lockfile
+      #    --frozen-lockfile means CI will FAIL if pnpm-lock.yaml is out of date
+      #    This prevents "it works locally but not in CI" issues
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 5. TypeScript — check all apps and packages for type errors
+      - name: Type check
+        run: pnpm type-check
+
+      # 6. Lint — check for code quality issues across all apps
+      - name: Lint
+        run: pnpm lint
+
+      # 7. Build — confirm both apps produce a clean production build
+      #    This catches import errors, missing files, and broken configs
+      - name: Build
+        run: pnpm build
+        env:
+          # Provide a placeholder API URL so Next.js build doesn't warn
+          NEXT_PUBLIC_API_URL: http://localhost:4000

@@ -1,0 +1,51 @@
+name: Deploy Web
+
+# ─────────────────────────────────────────────────────────────
+# Triggers
+# Only runs when code is merged into main.
+# CI must pass first — if CI fails, this never runs.
+# ─────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-web:
+    name: Deploy Next.js to Vercel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy to Vercel
+        working-directory: apps/web
+        run: |
+          pnpm dlx vercel --prod \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+# ─────────────────────────────────────────────────────────────
+# Required GitHub Secrets (set in repo Settings → Secrets)
+# ─────────────────────────────────────────────────────────────
+# VERCEL_TOKEN       → Vercel account token (vercel.com → Settings → Tokens)
+# VERCEL_ORG_ID      → Found in vercel.com → Settings → General
+# VERCEL_PROJECT_ID  → Found after running `vercel link` in apps/web
+# ─────────────────────────────────────────────────────────────
