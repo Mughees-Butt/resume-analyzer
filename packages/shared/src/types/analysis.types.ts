@@ -21,4 +21,6 @@ export interface AnalysisResult {
 export interface CreateAnalysisDto {
   resumeText?: string
   fileName?: string
+  // Optional — providing this activates Mode 2 (resume + JD fit analysis)
+  jobDescription?: string
 }

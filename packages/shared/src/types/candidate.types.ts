@@ -23,6 +23,16 @@ export interface TechStack {
   other: string[]
 }
 
+// Present when the analysis was run with a Job Description (Mode 2)
+export interface FitAnalysis {
+  // Candidate skills that the JD explicitly requires
+  alignedSkills: string[]
+  // JD requirements the candidate does not appear to have
+  gaps: string[]
+  // 1–2 sentence fit summary for the interviewer
+  summary: string
+}
+
 export interface CandidateProfile {
   id?: string
   name: string
@@ -36,6 +46,8 @@ export interface CandidateProfile {
   strongZones: string[]
   education?: Education[]
   certifications?: string[]
+  // Only present in Mode 2 (resume + JD)
+  fitAnalysis?: FitAnalysis
   createdAt?: string
 }
 
