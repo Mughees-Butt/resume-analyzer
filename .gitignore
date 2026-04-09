@@ -46,6 +46,10 @@ coverage/
 # Prisma
 prisma/migrations/dev.db
 
+# Claude Code
+AGENTS.md
+CLAUDE.md
+
 # Misc
 *.tsbuildinfo
 .cache/
