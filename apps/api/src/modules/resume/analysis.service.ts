@@ -52,7 +52,7 @@ export class AnalysisService {
   private get client(): Anthropic {
     if (!this._client) {
       const apiKey = process.env['ANTHROPIC_API_KEY']
-      if (!apiKey) {
+      if (!apiKey?.trim()) {
         throw new InternalServerErrorException(
           'ANTHROPIC_API_KEY is not configured. Add it to apps/api/.env.',
         )
@@ -73,7 +73,7 @@ export class AnalysisService {
     try {
       const response = await this.client.messages.create({
         model: MODEL,
-        max_tokens: 1024,
+        max_tokens: 2048,
         system:
           'You are an expert technical recruiter and software engineer. ' +
           'Analyse resumes and job descriptions to produce structured candidate profiles. ' +
@@ -87,8 +87,10 @@ export class AnalysisService {
       }
       raw = block.text
     } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err)
+      console.error('[AnalysisService] Claude API error:', detail)
       throw new InternalServerErrorException(
-        `Claude API error: ${err instanceof Error ? err.message : String(err)}`,
+        'The analysis service is temporarily unavailable. Please try again.',
       )
     }
 
@@ -98,11 +100,12 @@ export class AnalysisService {
   // ─── Prompt builders ────────────────────────────────────────────────────────
 
   private buildResumeOnlyPrompt(resumeText: string): string {
+    const safeResume = resumeText.replace(/"""/g, "'''")
     return `Analyse this software engineering resume and extract a structured candidate profile.
 
 Resume:
 """
-${resumeText}
+${safeResume}
 """
 
 Return a JSON object with exactly this shape:
@@ -112,16 +115,18 @@ Return ONLY the JSON. No explanation, no markdown.`
   }
 
   private buildJdPrompt(resumeText: string, jobDescription: string): string {
+    const safeResume = resumeText.replace(/"""/g, "'''")
+    const safeJd = jobDescription.replace(/"""/g, "'''")
     return `Analyse this software engineering resume against the provided job description.
 
 Resume:
 """
-${resumeText}
+${safeResume}
 """
 
 Job Description:
 """
-${jobDescription}
+${safeJd}
 """
 
 Return a JSON object with exactly this shape (include fitAnalysis because a JD was provided):

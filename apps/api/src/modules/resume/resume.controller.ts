@@ -87,7 +87,7 @@ export class ResumeController {
 
     return {
       success: true,
-      mode: dto.jobDescription ? 'jd' : 'resume-only',
+      mode: dto.jobDescription?.trim() ? 'jd' : 'resume-only',
       profile,
     }
   }

@@ -6,6 +6,6 @@ import { AnalysisService } from './analysis.service'
 @Module({
   controllers: [ResumeController],
   providers: [ResumeService, AnalysisService],
-  exports: [ResumeService, AnalysisService],
+  exports: [ResumeService],
 })
 export class ResumeModule {}
