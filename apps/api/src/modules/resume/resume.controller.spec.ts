@@ -69,6 +69,17 @@ describe('ResumeController (integration)', () => {
         text: 'Extracted resume text',
       })
     })
+
+    it('returns 413 when the file exceeds 5 MB', async () => {
+      const oversized = Buffer.alloc(6 * 1024 * 1024, 0)
+      await request(app.getHttpServer())
+        .post('/resume/upload')
+        .attach('file', oversized, {
+          filename: 'big.pdf',
+          contentType: 'application/pdf',
+        })
+        .expect(413)
+    })
   })
 
   // ─── POST /resume/text ────────────────────────────────────────────────────
