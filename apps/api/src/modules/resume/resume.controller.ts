@@ -9,13 +9,18 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
 import { ResumeService } from './resume.service'
+import { AnalysisService } from './analysis.service'
 import { ResumeTextDto } from './dto/resume-text.dto'
+import { AnalyseResumeDto } from './dto/analyse-resume.dto'
 
 // All routes in this controller are prefixed with /api/resume
 // (the /api global prefix is set in main.ts)
 @Controller('resume')
 export class ResumeController {
-  constructor(private readonly resumeService: ResumeService) {}
+  constructor(
+    private readonly resumeService: ResumeService,
+    private readonly analysisService: AnalysisService,
+  ) {}
 
   // ─────────────────────────────────────────────────────────────
   // POST /api/resume/upload
@@ -67,6 +72,23 @@ export class ResumeController {
       success: true,
       source: 'text',
       text: result.text,
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // POST /api/resume/analyse
+  // Accepts extracted resume text + optional job description.
+  // Mode 1 (resume only): returns structured CandidateProfile.
+  // Mode 2 (resume + JD): returns profile + fitAnalysis.
+  // ─────────────────────────────────────────────────────────────
+  @Post('analyse')
+  async analyseResume(@Body() dto: AnalyseResumeDto) {
+    const profile = await this.analysisService.analyseResume(dto.resumeText, dto.jobDescription)
+
+    return {
+      success: true,
+      mode: dto.jobDescription?.trim() ? 'jd' : 'resume-only',
+      profile,
     }
   }
 }

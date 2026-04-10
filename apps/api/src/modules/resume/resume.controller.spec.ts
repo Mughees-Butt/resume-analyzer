@@ -4,10 +4,15 @@ import { ValidationPipe, INestApplication } from '@nestjs/common'
 const request = require('supertest') as typeof import('supertest')
 import { ResumeController } from './resume.controller'
 import { ResumeService } from './resume.service'
+import { AnalysisService } from './analysis.service'
 
 const mockResumeService = {
   extractFromPdf: jest.fn(),
   normaliseText: jest.fn(),
+}
+
+const mockAnalysisService = {
+  analyseResume: jest.fn(),
 }
 
 describe('ResumeController (integration)', () => {
@@ -16,7 +21,10 @@ describe('ResumeController (integration)', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ResumeController],
-      providers: [{ provide: ResumeService, useValue: mockResumeService }],
+      providers: [
+        { provide: ResumeService, useValue: mockResumeService },
+        { provide: AnalysisService, useValue: mockAnalysisService },
+      ],
     }).compile()
 
     app = module.createNestApplication()
@@ -130,6 +138,88 @@ describe('ResumeController (integration)', () => {
       expect(mockResumeService.normaliseText).toHaveBeenCalledWith(
         'A valid resume body with enough content',
       )
+    })
+  })
+
+  // ─── POST /resume/analyse ─────────────────────────────────────────────────
+
+  describe('POST /resume/analyse', () => {
+    const LONG_RESUME = 'A'.repeat(200)
+
+    const MOCK_PROFILE = {
+      name: 'Jane Doe',
+      email: null,
+      currentRole: 'Senior Engineer',
+      yearsOfExperience: 7,
+      experienceLevel: 'senior',
+      specialization: 'backend',
+      primaryStack: {
+        languages: ['TypeScript'],
+        frameworks: ['NestJS'],
+        tools: ['Docker'],
+        cloud: ['AWS'],
+        databases: ['PostgreSQL'],
+        other: [],
+      },
+      secondaryStack: {
+        languages: [],
+        frameworks: [],
+        tools: [],
+        cloud: [],
+        databases: [],
+        other: [],
+      },
+      strongZones: ['API Design'],
+    }
+
+    it('returns 400 when resumeText is too short (< 50 chars)', async () => {
+      await request(app.getHttpServer())
+        .post('/resume/analyse')
+        .send({ resumeText: 'too short' })
+        .expect(400)
+    })
+
+    it('returns 201 with mode resume-only when no JD is provided', async () => {
+      mockAnalysisService.analyseResume.mockResolvedValueOnce(MOCK_PROFILE)
+
+      const res = await request(app.getHttpServer())
+        .post('/resume/analyse')
+        .send({ resumeText: LONG_RESUME })
+        .expect(201)
+
+      expect(res.body).toMatchObject({ success: true, mode: 'resume-only' })
+      expect((res.body as { profile: { name: string } }).profile.name).toBe('Jane Doe')
+    })
+
+    it('returns 201 with mode jd when a job description is provided', async () => {
+      const profileWithFit = {
+        ...MOCK_PROFILE,
+        fitAnalysis: {
+          alignedSkills: ['TypeScript'],
+          gaps: ['Kubernetes'],
+          summary: 'Good match overall.',
+        },
+      }
+      mockAnalysisService.analyseResume.mockResolvedValueOnce(profileWithFit)
+
+      const res = await request(app.getHttpServer())
+        .post('/resume/analyse')
+        .send({ resumeText: LONG_RESUME, jobDescription: 'We need a TypeScript engineer.' })
+        .expect(201)
+
+      expect(res.body).toMatchObject({ success: true, mode: 'jd' })
+      expect((res.body as { profile: { fitAnalysis: unknown } }).profile.fitAnalysis).toBeDefined()
+    })
+
+    it('returns 500 when AnalysisService throws', async () => {
+      mockAnalysisService.analyseResume.mockRejectedValueOnce(
+        new Error('The analysis service is temporarily unavailable. Please try again.'),
+      )
+
+      await request(app.getHttpServer())
+        .post('/resume/analyse')
+        .send({ resumeText: LONG_RESUME })
+        .expect(500)
     })
   })
 })
