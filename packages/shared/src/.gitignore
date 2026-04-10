@@ -1,0 +1,5 @@
+# Compiled output — tsc should emit to ../dist, not here.
+# These files are generated if tsc is invoked without the package tsconfig.
+*.js
+*.js.map
+*.d.ts
