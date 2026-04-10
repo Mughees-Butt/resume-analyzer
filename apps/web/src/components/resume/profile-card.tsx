@@ -137,19 +137,6 @@ export function ProfileCard({ profile, mode, onReset }: ProfileCardProps) {
         <StackSection title="Primary stack" stack={profile.primaryStack} />
         <StackSection title="Secondary stack" stack={profile.secondaryStack} />
 
-        {/* Education */}
-        {profile.education && profile.education.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Education</p>
-            {profile.education.map((ed, i) => (
-              <p key={i} className="text-sm text-zinc-600 dark:text-zinc-400">
-                {ed.degree} — {ed.institution}
-                {ed.year ? ` (${ed.year})` : ''}
-              </p>
-            ))}
-          </div>
-        )}
-
         {/* Reset */}
         <div className="flex justify-end border-t border-zinc-100 pt-4 dark:border-zinc-800">
           <button

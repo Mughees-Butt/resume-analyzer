@@ -8,10 +8,10 @@ import type { CandidateProfile } from '@resume-analyzer/shared'
 
 const MODEL = 'claude-sonnet-4-6'
 
-// The JSON schema description embedded in the prompt so Claude knows
-// exactly what shape to return. Defined once, reused in both modes.
-const PROFILE_SCHEMA = `{
-  "name": "string — candidate full name",
+// Inner fields shared by both prompt modes — no wrapping braces.
+// Kept brace-free so Mode 1 and Mode 2 can close the object themselves
+// without relying on fragile string slicing.
+const PROFILE_SCHEMA_BODY = `  "name": "string — candidate full name",
   "email": "string or null",
   "currentRole": "string or null — most recent job title",
   "yearsOfExperience": number,
@@ -33,14 +33,20 @@ const PROFILE_SCHEMA = `{
     "databases": [],
     "other": []
   },
-  "strongZones": ["3–5 key strength areas, e.g. API Design, System Architecture"]
-}`
+  "strongZones": ["3–5 key strength areas, e.g. API Design, System Architecture"]`
 
+// Mode 1 schema — profile fields only
+const PROFILE_SCHEMA = `{\n${PROFILE_SCHEMA_BODY}\n}`
+
+// Mode 2 addition — appended before the closing brace
 const FIT_ANALYSIS_SCHEMA = `  "fitAnalysis": {
     "alignedSkills": ["candidate skills the JD explicitly requires"],
     "gaps": ["JD requirements the candidate appears to lack"],
     "summary": "1–2 sentence fit assessment for the interviewer"
   }`
+
+// Mode 2 schema — profile fields + fitAnalysis
+const PROFILE_SCHEMA_WITH_FIT = `{\n${PROFILE_SCHEMA_BODY},\n${FIT_ANALYSIS_SCHEMA}\n}`
 
 @Injectable()
 export class AnalysisService {
@@ -82,8 +88,8 @@ export class AnalysisService {
       })
 
       const block = response.content[0]
-      if (block.type !== 'text') {
-        throw new Error('Unexpected response type from Claude')
+      if (!block || block.type !== 'text') {
+        throw new Error('Unexpected or empty response from Claude')
       }
       raw = block.text
     } catch (err) {
@@ -130,9 +136,7 @@ ${safeJd}
 """
 
 Return a JSON object with exactly this shape (include fitAnalysis because a JD was provided):
-${PROFILE_SCHEMA.slice(0, -1)},
-${FIT_ANALYSIS_SCHEMA}
-}
+${PROFILE_SCHEMA_WITH_FIT}
 
 Return ONLY the JSON. No explanation, no markdown.`
   }
