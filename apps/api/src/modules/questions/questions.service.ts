@@ -165,16 +165,31 @@ Return ONLY the JSON. No explanation, no markdown.`
     return parsed as InterviewQuestions
   }
 
-  // Basic shape check — full structural validation (5 per tier, required fields)
-  // is added in Step 3.
+  // Full structural validator — enforces the complete expected shape:
+  //   - At least 2 categories
+  //   - Each category passes isValidCategory (valid name + all three tier arrays)
+  //   - Each tier array has exactly 5 items
+  //   - Each question passes isValidQuestion (non-empty concept, application, topic + boolean asked)
   private isValidQuestions(value: unknown): boolean {
     if (typeof value !== 'object' || value === null) return false
     const q = value as Record<string, unknown>
-    return Array.isArray(q['categories']) && q['categories'].length > 0
+
+    if (!Array.isArray(q['categories']) || q['categories'].length < 2) return false
+
+    return (q['categories'] as unknown[]).every((cat) => {
+      if (!this.isValidCategory(cat)) return false
+
+      // cat is narrowed to CategoryGroup by the type predicate above
+      const TIERS = ['beginner', 'intermediate', 'expert'] as const
+      return TIERS.every((tier) => {
+        const questions = cat[tier]
+        if (questions.length !== 5) return false
+        return questions.every((item) => this.isValidQuestion(item))
+      })
+    })
   }
 
-  // Exposed for use by the full validator in Step 3
-  protected isValidCategory(value: unknown): value is CategoryGroup {
+  private isValidCategory(value: unknown): value is CategoryGroup {
     if (typeof value !== 'object' || value === null) return false
     const c = value as Record<string, unknown>
     return (
@@ -183,6 +198,20 @@ Return ONLY the JSON. No explanation, no markdown.`
       Array.isArray(c['beginner']) &&
       Array.isArray(c['intermediate']) &&
       Array.isArray(c['expert'])
+    )
+  }
+
+  private isValidQuestion(value: unknown): boolean {
+    if (typeof value !== 'object' || value === null) return false
+    const q = value as Record<string, unknown>
+    return (
+      typeof q['concept'] === 'string' &&
+      q['concept'].trim().length > 0 &&
+      typeof q['application'] === 'string' &&
+      q['application'].trim().length > 0 &&
+      typeof q['topic'] === 'string' &&
+      q['topic'].trim().length > 0 &&
+      typeof q['asked'] === 'boolean'
     )
   }
 }
