@@ -4,39 +4,33 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common'
 import Anthropic from '@anthropic-ai/sdk'
-import type { CandidateProfile, InterviewQuestions, CategoryGroup } from '@resume-analyzer/shared'
+import type { CandidateProfile, InterviewQuestions } from '@resume-analyzer/shared'
 
 const MODEL = 'claude-sonnet-4-6'
 
-// Valid category values — must match the QuestionCategory union in shared types
-const VALID_CATEGORIES = [
-  'dsa',
-  'system-design',
-  'language-specific',
-  'framework-specific',
-  'database',
-  'devops',
-  'behavioral',
-  'general',
-] as const
-
-// Schema constants — brace-free question body to allow clean composition
-const QUESTION_ITEM_SCHEMA = `{
-        "concept": "string — the theory/knowledge-check question (What is X? What are the pros and cons of Y?)",
-        "application": "string — the implementation/fix/trade-off follow-up (How would you implement X? How would you debug Y?)",
+// Schema constants — flat tier structure (15 questions total)
+const STANDARD_QUESTION = `{
+        "concept": "string — theory/knowledge-check (e.g. \\"What is X?\\" or \\"What are the trade-offs of Y?\\")",
+        "application": "string — implementation/fix follow-up (e.g. \\"How would you implement X?\\" or \\"How would you debug Y?\\")",
         "topic": "string — specific topic label (e.g. \\"React hooks\\", \\"SQL joins\\")",
+        "type": "standard",
+        "asked": false
+      }`
+
+const STRUCTURAL_QUESTION = `{
+        "concept": "string — design/flow thinking question tied to the candidate's actual experience (e.g. \\"Based on your work with X, how would you design the data models for Y?\\")",
+        "application": "string — follow-up on trade-offs and scale (e.g. \\"What trade-offs did you consider? What would you change if load requirements doubled?\\")",
+        "topic": "string — topic label (e.g. \\"Data Model Design\\", \\"Service Flow Architecture\\")",
+        "type": "structural",
         "asked": false
       }`
 
 const QUESTIONS_SCHEMA = `{
-  "categories": [
-    {
-      "category": "one of: dsa | system-design | language-specific | framework-specific | database | devops | behavioral | general",
-      "beginner": [${QUESTION_ITEM_SCHEMA}, "...5 total"],
-      "intermediate": [${QUESTION_ITEM_SCHEMA}, "...5 total"],
-      "expert": [${QUESTION_ITEM_SCHEMA}, "...5 total"]
-    }
-  ]
+  "tiers": {
+    "beginner": [${STANDARD_QUESTION}, "...5 total — all type: standard"],
+    "intermediate": [${STANDARD_QUESTION}, "...5 total — all type: standard"],
+    "expert": [${STANDARD_QUESTION}, "...4 type: standard, then:", ${STRUCTURAL_QUESTION}]
+  }
 }`
 
 @Injectable()
@@ -68,7 +62,7 @@ export class QuestionsService {
     try {
       const response = await this.client.messages.create({
         model: MODEL,
-        max_tokens: 8192,
+        max_tokens: 4096,
         system:
           'You are an expert technical interviewer with deep knowledge of software engineering. ' +
           "Generate structured interview questions tailored to a candidate's profile. " +
@@ -113,26 +107,34 @@ export class QuestionsService {
     const safeJd = hasJd ? jobDescription!.replace(/"""/g, "'''") : null
 
     const jdSection = safeJd
-      ? `\nJob Description (weight question categories toward the candidate's identified gaps):\n"""\n${safeJd}\n"""\n`
+      ? `\nJob Description (weight topics toward the candidate's identified gaps):\n"""\n${safeJd}\n"""\n`
       : ''
 
-    const categoryInstruction = hasJd
-      ? "Choose 4–5 categories most relevant to the candidate's stack AND the JD gaps."
-      : "Choose 4–5 categories most relevant to the candidate's stack and strong zones."
+    const topicInstruction = hasJd
+      ? "Choose topics spanning the candidate's primary stack AND the JD gaps."
+      : "Choose topics spanning the candidate's primary stack and strong zones."
 
-    return `Generate a structured interview question set for this software engineering candidate.
+    return `Generate a focused 15-question interview set for this software engineering candidate.
 
 Candidate Profile:
 ${profileSummary}
 ${jdSection}
 Instructions:
-- ${categoryInstruction}
-- For each category produce exactly 5 beginner, 5 intermediate, and 5 expert questions.
-- Every question must have two parts:
-    concept     — a theory or knowledge-check question (e.g. "What is X?" or "What are the trade-offs of Y?")
-    application — an implementation or debugging follow-up (e.g. "How would you implement X?" or "How would you fix Y?")
+- Total: exactly 15 questions — 5 beginner, 5 intermediate, 5 expert.
+- ${topicInstruction}
+- Spread topics across the candidate's stack — do not repeat the same topic across tiers.
+- Every question has two parts:
+    concept     — theory or knowledge-check (e.g. "What is X?" or "What are the trade-offs of Y?")
+    application — implementation or debugging follow-up (e.g. "How would you implement X?" or "How would you fix Y?")
+- beginner tier:     all 5 questions must have type "standard".
+- intermediate tier: all 5 questions must have type "standard".
+- expert tier:       exactly 4 questions type "standard", exactly 1 question type "structural".
+- The structural question must be personalised to this candidate's actual experience:
+    - Reference a specific technology, pattern, or project domain from their profile.
+    - Ask them to walk through data model design, service flow, or architecture decisions.
+    - concept: a design/flow thinking question (e.g. "Based on your work with NestJS, how would you design the data models for a multi-tenant billing system?")
+    - application: trade-off and scale follow-up (e.g. "What trade-offs did you consider? How would your design change if the system needed to handle 10× the load?")
 - Set "asked" to false for every question.
-- Valid category values: dsa, system-design, language-specific, framework-specific, database, devops, behavioral, general.
 
 Return a JSON object with exactly this shape:
 ${QUESTIONS_SCHEMA}
@@ -165,40 +167,49 @@ Return ONLY the JSON. No explanation, no markdown.`
     return parsed as InterviewQuestions
   }
 
-  // Full structural validator — enforces the complete expected shape:
-  //   - At least 2 categories
-  //   - Each category passes isValidCategory (valid name + all three tier arrays)
-  //   - Each tier array has exactly 5 items
-  //   - Each question passes isValidQuestion (non-empty concept, application, topic + boolean asked)
+  // ─── Validators ─────────────────────────────────────────────────────────────
+
+  // Full structural validator:
+  //   - tiers object with beginner, intermediate, expert arrays
+  //   - Each tier has exactly 5 questions
+  //   - beginner + intermediate: all type 'standard'
+  //   - expert: exactly 4 'standard' + 1 'structural'
+  //   - Every question has non-empty concept, application, topic + boolean asked
   private isValidQuestions(value: unknown): boolean {
     if (typeof value !== 'object' || value === null) return false
     const q = value as Record<string, unknown>
 
-    if (!Array.isArray(q['categories']) || q['categories'].length < 2) return false
+    if (typeof q['tiers'] !== 'object' || q['tiers'] === null) return false
+    const tiers = q['tiers'] as Record<string, unknown>
 
-    return (q['categories'] as unknown[]).every((cat) => {
-      if (!this.isValidCategory(cat)) return false
+    const beginner = tiers['beginner']
+    const intermediate = tiers['intermediate']
+    const expert = tiers['expert']
 
-      // cat is narrowed to CategoryGroup by the type predicate above
-      const TIERS = ['beginner', 'intermediate', 'expert'] as const
-      return TIERS.every((tier) => {
-        const questions = cat[tier]
-        if (questions.length !== 5) return false
-        return questions.every((item) => this.isValidQuestion(item))
-      })
-    })
-  }
+    if (!Array.isArray(beginner) || beginner.length !== 5) return false
+    if (!Array.isArray(intermediate) || intermediate.length !== 5) return false
+    if (!Array.isArray(expert) || expert.length !== 5) return false
 
-  private isValidCategory(value: unknown): value is CategoryGroup {
-    if (typeof value !== 'object' || value === null) return false
-    const c = value as Record<string, unknown>
-    return (
-      typeof c['category'] === 'string' &&
-      VALID_CATEGORIES.includes(c['category'] as (typeof VALID_CATEGORIES)[number]) &&
-      Array.isArray(c['beginner']) &&
-      Array.isArray(c['intermediate']) &&
-      Array.isArray(c['expert'])
-    )
+    const allStandard = (arr: unknown[]) =>
+      arr.every(
+        (q) => this.isValidQuestion(q) && (q as Record<string, unknown>)['type'] === 'standard',
+      )
+
+    if (!allStandard(beginner as unknown[])) return false
+    if (!allStandard(intermediate as unknown[])) return false
+
+    // Expert: exactly 4 standard + 1 structural
+    const expertQuestions = expert as unknown[]
+    if (!expertQuestions.every((q) => this.isValidQuestion(q))) return false
+
+    const structuralCount = expertQuestions.filter(
+      (q) => (q as Record<string, unknown>)['type'] === 'structural',
+    ).length
+    const standardCount = expertQuestions.filter(
+      (q) => (q as Record<string, unknown>)['type'] === 'standard',
+    ).length
+
+    return structuralCount === 1 && standardCount === 4
   }
 
   private isValidQuestion(value: unknown): boolean {
@@ -211,6 +222,7 @@ Return ONLY the JSON. No explanation, no markdown.`
       q['application'].trim().length > 0 &&
       typeof q['topic'] === 'string' &&
       q['topic'].trim().length > 0 &&
+      (q['type'] === 'standard' || q['type'] === 'structural') &&
       typeof q['asked'] === 'boolean'
     )
   }
