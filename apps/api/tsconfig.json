@@ -17,6 +17,7 @@
     "incremental": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "skipLibCheck": true,
+    "types": ["jest", "node"],
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,
