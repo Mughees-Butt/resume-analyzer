@@ -2,21 +2,9 @@
 // Interview Questions
 // ─────────────────────────────────────────────────────────────
 
-export type Difficulty = 'beginner' | 'intermediate' | 'expert'
-
 // standard — concept + application knowledge check
 // structural — design/flow thinking question tied to the candidate's actual experience
 export type QuestionType = 'standard' | 'structural'
-
-export type QuestionCategory =
-  | 'dsa'
-  | 'system-design'
-  | 'language-specific'
-  | 'framework-specific'
-  | 'database'
-  | 'devops'
-  | 'behavioral'
-  | 'general'
 
 export interface InterviewQuestion {
   id?: string
