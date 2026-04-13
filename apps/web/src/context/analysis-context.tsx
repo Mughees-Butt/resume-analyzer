@@ -10,6 +10,8 @@ export interface AnalysisState {
   mode: 'resume-only' | 'jd'
   // Carried forward for Phase 7 transcription cross-referencing
   resumeText: string
+  // Carried forward so the questions call receives full JD context (not just gaps)
+  jobDescription?: string
 }
 
 interface AnalysisContextValue {
