@@ -5,6 +5,7 @@
 
 import {
   IsArray,
+  IsDefined,
   IsIn,
   IsNotEmpty,
   IsNumber,
@@ -21,12 +22,28 @@ import type { ExperienceLevel, Specialization } from '@resume-analyzer/shared'
 // ── TechStack nested DTO ──────────────────────────────────────────────────────
 
 class TechStackDto {
-  @IsArray() languages!: string[]
-  @IsArray() frameworks!: string[]
-  @IsArray() tools!: string[]
-  @IsArray() cloud!: string[]
-  @IsArray() databases!: string[]
-  @IsArray() other!: string[]
+  @IsArray() @IsString({ each: true }) languages!: string[]
+  @IsArray() @IsString({ each: true }) frameworks!: string[]
+  @IsArray() @IsString({ each: true }) tools!: string[]
+  @IsArray() @IsString({ each: true }) cloud!: string[]
+  @IsArray() @IsString({ each: true }) databases!: string[]
+  @IsArray() @IsString({ each: true }) other!: string[]
+}
+
+// ── FitAnalysis nested DTO ────────────────────────────────────────────────────
+
+class FitAnalysisDto {
+  @IsArray()
+  @IsString({ each: true })
+  alignedSkills!: string[]
+
+  @IsArray()
+  @IsString({ each: true })
+  gaps!: string[]
+
+  @IsString()
+  @IsNotEmpty()
+  summary!: string
 }
 
 // ── Profile nested DTO ────────────────────────────────────────────────────────
@@ -36,6 +53,8 @@ class CandidateProfileDto {
   @IsNotEmpty()
   name!: string
 
+  // Validated for completeness; intentionally omitted from the AI prompt
+  // (experienceLevel string is more meaningful to Claude than a raw number).
   @IsNumber()
   @Min(0)
   yearsOfExperience!: number
@@ -50,16 +69,28 @@ class CandidateProfileDto {
   })
   specialization!: Specialization
 
+  @IsDefined()
   @ValidateNested()
   @Type(() => TechStackDto)
   primaryStack!: TechStackDto
 
+  @IsDefined()
   @ValidateNested()
   @Type(() => TechStackDto)
   secondaryStack!: TechStackDto
 
+  @IsDefined()
   @IsArray()
+  @IsString({ each: true })
   strongZones!: string[]
+
+  // Only present in Mode 2 (resume + JD). The whitelist pipe would strip this
+  // without the explicit field declaration, causing fitAnalysis.gaps to be lost
+  // and the jdGaps section of the prompt to silently disappear.
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => FitAnalysisDto)
+  fitAnalysis?: FitAnalysisDto
 }
 
 // ── Root DTO ──────────────────────────────────────────────────────────────────

@@ -41,8 +41,9 @@ const VALID_QUESTIONS = {
 
 const VALID_PROFILE = {
   name: 'Jane Doe',
-  experienceLevel: 'senior',
-  specialization: 'backend',
+  yearsOfExperience: 6,
+  experienceLevel: 'senior' as const,
+  specialization: 'backend' as const,
   primaryStack: {
     languages: ['TypeScript'],
     frameworks: ['NestJS'],
@@ -90,7 +91,7 @@ describe('QuestionsService', () => {
     it('returns InterviewQuestions when Claude responds with valid JSON', async () => {
       claudeReturns(VALID_QUESTIONS)
 
-      const result = await service.generateQuestions(VALID_PROFILE as never)
+      const result = await service.generateQuestions(VALID_PROFILE)
 
       expect(result.tiers.beginner).toHaveLength(5)
       expect(result.tiers.intermediate).toHaveLength(5)
@@ -102,7 +103,7 @@ describe('QuestionsService', () => {
         content: [{ type: 'text', text: '```json\n' + JSON.stringify(VALID_QUESTIONS) + '\n```' }],
       })
 
-      const result = await service.generateQuestions(VALID_PROFILE as never)
+      const result = await service.generateQuestions(VALID_PROFILE)
       expect(result.tiers.beginner).toHaveLength(5)
     })
   })
@@ -114,7 +115,7 @@ describe('QuestionsService', () => {
       claudeReturns(VALID_QUESTIONS)
 
       const result = await service.generateQuestions(
-        VALID_PROFILE as never,
+        VALID_PROFILE,
         'We need a TypeScript backend engineer with AWS experience.',
       )
 
@@ -140,7 +141,7 @@ describe('QuestionsService', () => {
     })
 
     it('throws InternalServerErrorException when ANTHROPIC_API_KEY is not set', async () => {
-      await expect(keylessService.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+      await expect(keylessService.generateQuestions(VALID_PROFILE)).rejects.toThrow(
         InternalServerErrorException,
       )
     })
@@ -152,7 +153,7 @@ describe('QuestionsService', () => {
     it('throws InternalServerErrorException when the Anthropic API call throws', async () => {
       mockMessagesCreate.mockRejectedValueOnce(new Error('network timeout'))
 
-      await expect(service.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+      await expect(service.generateQuestions(VALID_PROFILE)).rejects.toThrow(
         InternalServerErrorException,
       )
     })
@@ -162,7 +163,7 @@ describe('QuestionsService', () => {
         content: [{ type: 'text', text: 'not valid json at all' }],
       })
 
-      await expect(service.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+      await expect(service.generateQuestions(VALID_PROFILE)).rejects.toThrow(
         UnprocessableEntityException,
       )
     })
@@ -174,7 +175,7 @@ describe('QuestionsService', () => {
     it('throws UnprocessableEntityException when tiers is missing', async () => {
       claudeReturns({ something: 'else' })
 
-      await expect(service.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+      await expect(service.generateQuestions(VALID_PROFILE)).rejects.toThrow(
         UnprocessableEntityException,
       )
     })
@@ -188,7 +189,7 @@ describe('QuestionsService', () => {
         },
       })
 
-      await expect(service.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+      await expect(service.generateQuestions(VALID_PROFILE)).rejects.toThrow(
         UnprocessableEntityException,
       )
     })
@@ -202,7 +203,7 @@ describe('QuestionsService', () => {
         },
       })
 
-      await expect(service.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+      await expect(service.generateQuestions(VALID_PROFILE)).rejects.toThrow(
         UnprocessableEntityException,
       )
     })
@@ -220,7 +221,7 @@ describe('QuestionsService', () => {
         },
       })
 
-      await expect(service.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+      await expect(service.generateQuestions(VALID_PROFILE)).rejects.toThrow(
         UnprocessableEntityException,
       )
     })
@@ -235,7 +236,7 @@ describe('QuestionsService', () => {
         },
       })
 
-      await expect(service.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+      await expect(service.generateQuestions(VALID_PROFILE)).rejects.toThrow(
         UnprocessableEntityException,
       )
     })
@@ -256,7 +257,7 @@ describe('QuestionsService', () => {
         },
       })
 
-      await expect(service.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+      await expect(service.generateQuestions(VALID_PROFILE)).rejects.toThrow(
         UnprocessableEntityException,
       )
     })
@@ -268,7 +269,7 @@ describe('QuestionsService', () => {
       claudeReturns(VALID_QUESTIONS)
 
       const unknownLevelProfile = { ...VALID_PROFILE, experienceLevel: 'staff' }
-      const result = await service.generateQuestions(unknownLevelProfile as never)
+      const result = await service.generateQuestions(unknownLevelProfile as typeof VALID_PROFILE)
 
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Unknown experienceLevel "staff"'),

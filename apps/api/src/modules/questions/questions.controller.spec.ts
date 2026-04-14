@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { ValidationPipe, INestApplication } from '@nestjs/common'
+import { ValidationPipe, INestApplication, UnprocessableEntityException } from '@nestjs/common'
 import { Server } from 'http'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const request = require('supertest') as typeof import('supertest')
@@ -137,12 +137,22 @@ describe('QuestionsController (integration)', () => {
       expect(res.body as { mode: string }).toMatchObject({ success: true, mode: 'jd' })
     })
 
-    it('returns 500 when QuestionsService throws', async () => {
+    it('returns 500 when QuestionsService throws InternalServerErrorException', async () => {
       mockQuestionsService.generateQuestions.mockRejectedValueOnce(
         new Error('The question generation service is temporarily unavailable. Please try again.'),
       )
 
       await request(server).post('/questions/generate').send({ profile: MOCK_PROFILE }).expect(500)
+    })
+
+    it('returns 422 when QuestionsService throws UnprocessableEntityException', async () => {
+      mockQuestionsService.generateQuestions.mockRejectedValueOnce(
+        new UnprocessableEntityException(
+          'Claude returned an incomplete question set. Please try again.',
+        ),
+      )
+
+      await request(server).post('/questions/generate').send({ profile: MOCK_PROFILE }).expect(422)
     })
   })
 })

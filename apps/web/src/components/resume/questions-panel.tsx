@@ -220,7 +220,7 @@ export function QuestionsPanel() {
               onClick={() => router.push('/')}
               className="text-xs text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400"
             >
-              ← Back to profile
+              ← New analysis
             </button>
           </div>
         </div>
@@ -294,7 +294,7 @@ export function QuestionsPanel() {
             onClick={() => router.push('/')}
             className="text-xs text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400"
           >
-            ← Back to profile
+            ← New analysis
           </button>
 
           <Button

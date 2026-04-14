@@ -15,6 +15,7 @@ export interface InterviewQuestion {
   concept: string
   application: string
   topic: string
+  // Collapsed by default in the UI — not shared with the candidate during the interview.
   hint: string
   type: QuestionType
   // Set to true when the interviewer asks this question during the session (default: false)
