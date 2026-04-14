@@ -8,7 +8,8 @@ import type { CandidateProfile } from '@resume-analyzer/shared'
 export interface AnalysisState {
   profile: CandidateProfile
   mode: 'resume-only' | 'jd'
-  // Carried forward for Phase 7 transcription cross-referencing
+  // Stored for Phase 7 transcription cross-referencing. Not currently read by
+  // QuestionsPanel — forward-looking state, not wired to anything today.
   resumeText: string
   // Carried forward so the questions call receives full JD context (not just gaps)
   jobDescription?: string

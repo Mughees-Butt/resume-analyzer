@@ -25,7 +25,7 @@ type Status = 'idle' | 'loading' | 'analysed' | 'error'
 const MIN_RESUME_LENGTH = 50
 
 export function ResumeUploader() {
-  const { setAnalysis } = useAnalysis()
+  const { setAnalysis, clearAnalysis } = useAnalysis()
   const router = useRouter()
 
   const [status, setStatus] = useState<Status>('idle')
@@ -100,6 +100,7 @@ export function ResumeUploader() {
     setResumeText('')
     setJdText('')
     setActiveTab('pdf')
+    clearAnalysis()
   }
 
   // ── Render: analysed state ────────────────────────────────────────────────

@@ -261,4 +261,26 @@ describe('QuestionsService', () => {
       )
     })
   })
+
+  describe('buildTierCalibration fallback', () => {
+    it('logs a warning and still returns 15 valid questions for an unknown experienceLevel', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+      claudeReturns(VALID_QUESTIONS)
+
+      const unknownLevelProfile = { ...VALID_PROFILE, experienceLevel: 'staff' }
+      const result = await service.generateQuestions(unknownLevelProfile as never)
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Unknown experienceLevel "staff"'),
+      )
+      const allQuestions = [
+        ...result.tiers.beginner,
+        ...result.tiers.intermediate,
+        ...result.tiers.expert,
+      ]
+      expect(allQuestions).toHaveLength(15)
+
+      warnSpy.mockRestore()
+    })
+  })
 })

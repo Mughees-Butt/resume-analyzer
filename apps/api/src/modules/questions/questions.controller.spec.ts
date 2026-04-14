@@ -13,6 +13,7 @@ const mockQuestionsService = {
 // Minimal valid CandidateProfile object — passes @IsObject() on the DTO
 const MOCK_PROFILE = {
   name: 'Jane Doe',
+  yearsOfExperience: 6,
   experienceLevel: 'senior',
   specialization: 'backend',
   primaryStack: {

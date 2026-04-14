@@ -1,18 +1,74 @@
 // DTO for POST /api/questions/generate
 // profile is required — the CandidateProfile extracted by /api/resume/analyse.
 // jobDescription is optional — its presence instructs Claude to weight question
-// categories toward the JD gaps identified in Mode 2.
+// topics toward the JD gaps identified in Mode 2.
 
-import { IsObject, IsOptional, IsString, MinLength } from 'class-validator'
-import { Transform } from 'class-transformer'
-import type { CandidateProfile } from '@resume-analyzer/shared'
+import {
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+  ValidateNested,
+} from 'class-validator'
+import { Transform, Type } from 'class-transformer'
+import type { ExperienceLevel, Specialization } from '@resume-analyzer/shared'
+
+// ── TechStack nested DTO ──────────────────────────────────────────────────────
+
+class TechStackDto {
+  @IsArray() languages!: string[]
+  @IsArray() frameworks!: string[]
+  @IsArray() tools!: string[]
+  @IsArray() cloud!: string[]
+  @IsArray() databases!: string[]
+  @IsArray() other!: string[]
+}
+
+// ── Profile nested DTO ────────────────────────────────────────────────────────
+
+class CandidateProfileDto {
+  @IsString()
+  @IsNotEmpty()
+  name!: string
+
+  @IsNumber()
+  @Min(0)
+  yearsOfExperience!: number
+
+  @IsIn(['junior', 'mid', 'senior', 'lead'], {
+    message: 'profile.experienceLevel must be junior, mid, senior, or lead.',
+  })
+  experienceLevel!: ExperienceLevel
+
+  @IsIn(['frontend', 'backend', 'fullstack', 'mobile', 'devops', 'ml', 'data', 'unknown'], {
+    message: 'profile.specialization is not a recognised value.',
+  })
+  specialization!: Specialization
+
+  @ValidateNested()
+  @Type(() => TechStackDto)
+  primaryStack!: TechStackDto
+
+  @ValidateNested()
+  @Type(() => TechStackDto)
+  secondaryStack!: TechStackDto
+
+  @IsArray()
+  strongZones!: string[]
+}
+
+// ── Root DTO ──────────────────────────────────────────────────────────────────
 
 export class GenerateQuestionsDto {
-  // The full CandidateProfile produced by AnalysisService.
-  // Deep validation is intentionally omitted — the profile comes from our own
-  // /analyse endpoint and was already validated there.
   @IsObject()
-  profile!: CandidateProfile
+  @ValidateNested()
+  @Type(() => CandidateProfileDto)
+  profile!: CandidateProfileDto
 
   @IsOptional()
   @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
