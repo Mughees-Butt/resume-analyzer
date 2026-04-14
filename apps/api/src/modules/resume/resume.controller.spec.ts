@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { ValidationPipe, INestApplication } from '@nestjs/common'
+import { Server } from 'http'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const request = require('supertest') as typeof import('supertest')
 import { ResumeController } from './resume.controller'
@@ -17,6 +18,7 @@ const mockAnalysisService = {
 
 describe('ResumeController (integration)', () => {
   let app: INestApplication
+  let server: Server
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -30,6 +32,7 @@ describe('ResumeController (integration)', () => {
     app = module.createNestApplication()
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
     await app.init()
+    server = app.getHttpServer() as Server
   })
 
   afterEach(async () => {
@@ -41,11 +44,11 @@ describe('ResumeController (integration)', () => {
 
   describe('POST /resume/upload', () => {
     it('returns 400 when no file is provided', async () => {
-      await request(app.getHttpServer()).post('/resume/upload').expect(400)
+      await request(server).post('/resume/upload').expect(400)
     })
 
     it('returns 400 when a non-PDF file is uploaded', async () => {
-      await request(app.getHttpServer())
+      await request(server)
         .post('/resume/upload')
         .attach('file', Buffer.from('not a pdf'), {
           filename: 'resume.txt',
@@ -61,7 +64,7 @@ describe('ResumeController (integration)', () => {
         fileName: 'resume.pdf',
       })
 
-      const res = await request(app.getHttpServer())
+      const res = await request(server)
         .post('/resume/upload')
         .attach('file', Buffer.from('%PDF-fake'), {
           filename: 'resume.pdf',
@@ -80,7 +83,7 @@ describe('ResumeController (integration)', () => {
 
     it('returns 413 when the file exceeds 5 MB', async () => {
       const oversized = Buffer.alloc(6 * 1024 * 1024, 0)
-      await request(app.getHttpServer())
+      await request(server)
         .post('/resume/upload')
         .attach('file', oversized, {
           filename: 'big.pdf',
@@ -94,7 +97,7 @@ describe('ResumeController (integration)', () => {
 
   describe('POST /resume/text', () => {
     it('returns 400 when body is missing', async () => {
-      await request(app.getHttpServer())
+      await request(server)
         .post('/resume/text')
         .set('Content-Type', 'application/json')
         .send({})
@@ -102,11 +105,11 @@ describe('ResumeController (integration)', () => {
     })
 
     it('returns 400 when text is not a string', async () => {
-      await request(app.getHttpServer()).post('/resume/text').send({ text: 12345 }).expect(400)
+      await request(server).post('/resume/text').send({ text: 12345 }).expect(400)
     })
 
     it('returns 400 when text is an empty string', async () => {
-      await request(app.getHttpServer()).post('/resume/text').send({ text: '' }).expect(400)
+      await request(server).post('/resume/text').send({ text: '' }).expect(400)
     })
 
     it('returns 200 with cleaned text for valid input', async () => {
@@ -114,7 +117,7 @@ describe('ResumeController (integration)', () => {
         text: 'Cleaned resume text',
       })
 
-      const res = await request(app.getHttpServer())
+      const res = await request(server)
         .post('/resume/text')
         .send({ text: 'A valid resume body with enough content' })
         .expect(201)
@@ -129,7 +132,7 @@ describe('ResumeController (integration)', () => {
     it('strips unknown fields from the request body (whitelist: true)', async () => {
       mockResumeService.normaliseText.mockReturnValueOnce({ text: 'ok' })
 
-      await request(app.getHttpServer())
+      await request(server)
         .post('/resume/text')
         .send({ text: 'A valid resume body with enough content', injected: 'evil' })
         .expect(201)
@@ -173,16 +176,13 @@ describe('ResumeController (integration)', () => {
     }
 
     it('returns 400 when resumeText is too short (< 50 chars)', async () => {
-      await request(app.getHttpServer())
-        .post('/resume/analyse')
-        .send({ resumeText: 'too short' })
-        .expect(400)
+      await request(server).post('/resume/analyse').send({ resumeText: 'too short' }).expect(400)
     })
 
     it('returns 201 with mode resume-only when no JD is provided', async () => {
       mockAnalysisService.analyseResume.mockResolvedValueOnce(MOCK_PROFILE)
 
-      const res = await request(app.getHttpServer())
+      const res = await request(server)
         .post('/resume/analyse')
         .send({ resumeText: LONG_RESUME })
         .expect(201)
@@ -202,7 +202,7 @@ describe('ResumeController (integration)', () => {
       }
       mockAnalysisService.analyseResume.mockResolvedValueOnce(profileWithFit)
 
-      const res = await request(app.getHttpServer())
+      const res = await request(server)
         .post('/resume/analyse')
         .send({ resumeText: LONG_RESUME, jobDescription: 'We need a TypeScript engineer.' })
         .expect(201)
@@ -216,10 +216,7 @@ describe('ResumeController (integration)', () => {
         new Error('The analysis service is temporarily unavailable. Please try again.'),
       )
 
-      await request(app.getHttpServer())
-        .post('/resume/analyse')
-        .send({ resumeText: LONG_RESUME })
-        .expect(500)
+      await request(server).post('/resume/analyse').send({ resumeText: LONG_RESUME }).expect(500)
     })
   })
 })
