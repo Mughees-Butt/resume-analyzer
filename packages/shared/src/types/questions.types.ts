@@ -14,7 +14,7 @@ export interface InterviewQuestion {
   concept: string
   application: string
   topic: string
-  hint?: string
+  hint: string
   type: QuestionType
   // Set to true when the interviewer asks this question during the session (default: false)
   asked: boolean

@@ -29,6 +29,8 @@ function QuestionRow({
   index: number
   onToggle: () => void
 }) {
+  const [hintOpen, setHintOpen] = useState(false)
+
   return (
     <li
       className={[
@@ -79,6 +81,24 @@ function QuestionRow({
           <span className="font-semibold text-zinc-600 dark:text-zinc-300">Follow-up: </span>
           {question.application}
         </p>
+
+        {/* Hint — collapsed by default */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setHintOpen((o) => !o)}
+            className="text-xs text-violet-600 underline-offset-2 hover:underline dark:text-violet-400"
+            aria-expanded={hintOpen}
+          >
+            {hintOpen ? 'Hide hint' : 'Show hint'}
+          </button>
+          {hintOpen && (
+            <p className="mt-1.5 rounded-md bg-violet-50 px-3 py-2 text-xs leading-relaxed text-violet-800 dark:bg-violet-950 dark:text-violet-300">
+              <span className="font-semibold">Hint: </span>
+              {question.hint}
+            </p>
+          )}
+        </div>
       </div>
     </li>
   )

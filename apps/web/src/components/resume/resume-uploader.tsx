@@ -11,6 +11,8 @@ import { ProfileCard } from './profile-card'
 import { FitAnalysisCard } from './fit-analysis-card'
 import { uploadResumePdf, submitResumeText, analyseResume } from '@/lib/api-client'
 import type { AnalyseResult } from '@/lib/api-client'
+import { useAnalysis } from '@/context/analysis-context'
+import { useRouter } from 'next/navigation'
 
 // ─── State machine ────────────────────────────────────────────────────────────
 // idle     → user is setting up inputs
@@ -23,6 +25,9 @@ type Status = 'idle' | 'loading' | 'analysed' | 'error'
 const MIN_RESUME_LENGTH = 50
 
 export function ResumeUploader() {
+  const { setAnalysis } = useAnalysis()
+  const router = useRouter()
+
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<AnalyseResult | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -74,6 +79,12 @@ export function ResumeUploader() {
 
       const data = await analyseResume(extractedText, jdText.trim() || undefined)
       setResult(data)
+      setAnalysis({
+        profile: data.profile,
+        mode: data.mode,
+        resumeText: extractedText,
+        jobDescription: jdText.trim() || undefined,
+      })
       setStatus('analysed')
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
@@ -100,6 +111,12 @@ export function ResumeUploader() {
         {result.profile.fitAnalysis && (
           <FitAnalysisCard fit={result.profile.fitAnalysis} />
         )}
+        {/* Continue CTA */}
+        <div className="flex justify-end">
+          <Button type="button" onClick={() => router.push('/questions')}>
+            Continue to questions →
+          </Button>
+        </div>
       </div>
     )
   }

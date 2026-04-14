@@ -13,6 +13,7 @@ const STANDARD_QUESTION = `{
         "concept": "string — theory/knowledge-check (e.g. \\"What is X?\\" or \\"What are the trade-offs of Y?\\")",
         "application": "string — implementation/fix follow-up (e.g. \\"How would you implement X?\\" or \\"How would you debug Y?\\")",
         "topic": "string — specific topic label (e.g. \\"React hooks\\", \\"SQL joins\\")",
+        "hint": "string — 1-2 sentences: key points a strong answer must mention (interviewer-only, not shown to candidate)",
         "type": "standard",
         "asked": false
       }`
@@ -21,6 +22,7 @@ const STRUCTURAL_QUESTION = `{
         "concept": "string — design/flow thinking question tied to the candidate's actual experience (e.g. \\"Based on your work with X, how would you design the data models for Y?\\")",
         "application": "string — follow-up on trade-offs and scale (e.g. \\"What trade-offs did you consider? What would you change if load requirements doubled?\\")",
         "topic": "string — topic label (e.g. \\"Data Model Design\\", \\"Service Flow Architecture\\")",
+        "hint": "string — specific signals to listen for: what a strong answer from this candidate should articulate given their background (interviewer-only)",
         "type": "structural",
         "asked": false
       }`
@@ -114,11 +116,16 @@ export class QuestionsService {
       ? "Choose topics spanning the candidate's primary stack AND the JD gaps."
       : "Choose topics spanning the candidate's primary stack and strong zones."
 
+    const tierCalibration = this.buildTierCalibration(profile.experienceLevel)
+
     return `Generate a focused 15-question interview set for this software engineering candidate.
 
 Candidate Profile:
 ${profileSummary}
 ${jdSection}
+Tier difficulty calibration (IMPORTANT — tiers are relative to this candidate's level, not universal):
+${tierCalibration}
+
 Instructions:
 - Total: exactly 15 questions — 5 beginner, 5 intermediate, 5 expert.
 - ${topicInstruction}
@@ -126,6 +133,9 @@ Instructions:
 - Every question has two parts:
     concept     — theory or knowledge-check (e.g. "What is X?" or "What are the trade-offs of Y?")
     application — implementation or debugging follow-up (e.g. "How would you implement X?" or "How would you fix Y?")
+- Every question must include a hint (interviewer-only, never shown to the candidate):
+    standard questions:   1-2 sentences covering the key points a strong answer must mention.
+    structural questions: specific signals to listen for — what this candidate should articulate given their background.
 - beginner tier:     all 5 questions must have type "standard".
 - intermediate tier: all 5 questions must have type "standard".
 - expert tier:       exactly 4 questions type "standard", exactly 1 question type "structural".
@@ -140,6 +150,28 @@ Return a JSON object with exactly this shape:
 ${QUESTIONS_SCHEMA}
 
 Return ONLY the JSON. No explanation, no markdown.`
+  }
+
+  private buildTierCalibration(level: string): string {
+    const map: Record<string, string> = {
+      junior:
+        '- beginner:     core language/framework syntax they must know to do their job\n' +
+        '- intermediate: applying those fundamentals to solve a real task (error handling, testing, state management)\n' +
+        '- expert:       design thinking stretch questions — trade-offs, patterns, basic architecture',
+      mid:
+        '- beginner:     solid working knowledge they use daily (tooling, patterns, data structures)\n' +
+        '- intermediate: system design basics, performance trade-offs, debugging at depth\n' +
+        '- expert:       distributed systems concepts, architecture decisions, cross-team impact',
+      senior:
+        '- beginner:     things a senior must know cold — SOLID principles, concurrency basics, distributed primitives\n' +
+        '- intermediate: applied system design, scalability patterns, testing strategy at scale\n' +
+        '- expert:       complex distributed systems, multi-tenant or high-load architecture, cross-cutting concerns',
+      lead:
+        '- beginner:     deep technical baselines expected of the whole team they lead\n' +
+        '- intermediate: org-level design decisions, API contracts, delivery trade-offs, incident response\n' +
+        '- expert:       platform thinking, evolutionary architecture, engineering culture and process',
+    }
+    return map[level] ?? map['senior']
   }
 
   // ─── Response parser ────────────────────────────────────────────────────────
@@ -222,6 +254,8 @@ Return ONLY the JSON. No explanation, no markdown.`
       q['application'].trim().length > 0 &&
       typeof q['topic'] === 'string' &&
       q['topic'].trim().length > 0 &&
+      typeof q['hint'] === 'string' &&
+      q['hint'].trim().length > 0 &&
       (q['type'] === 'standard' || q['type'] === 'structural') &&
       typeof q['asked'] === 'boolean'
     )

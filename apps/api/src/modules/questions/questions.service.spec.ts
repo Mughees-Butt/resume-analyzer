@@ -19,6 +19,7 @@ const makeQuestion = (type: 'standard' | 'structural' = 'standard') => ({
   concept: 'What is X?',
   application: 'How would you implement X?',
   topic: 'Topic Label',
+  hint: 'A strong answer should mention Y and Z.',
   type,
   asked: false,
 })
@@ -229,6 +230,27 @@ describe('QuestionsService', () => {
       claudeReturns({
         tiers: {
           beginner: [badQuestion, ...Array.from({ length: 4 }, () => makeQuestion())],
+          intermediate: makeStandardTier(),
+          expert: makeExpertTier(),
+        },
+      })
+
+      await expect(service.generateQuestions(VALID_PROFILE as never)).rejects.toThrow(
+        UnprocessableEntityException,
+      )
+    })
+
+    it('throws UnprocessableEntityException when a question is missing a hint', async () => {
+      const noHint = {
+        concept: 'What is X?',
+        application: 'How?',
+        topic: 'Topic',
+        type: 'standard' as const,
+        asked: false,
+      }
+      claudeReturns({
+        tiers: {
+          beginner: [noHint, ...Array.from({ length: 4 }, () => makeQuestion())],
           intermediate: makeStandardTier(),
           expert: makeExpertTier(),
         },
