@@ -231,7 +231,7 @@ export function ResumeUploader() {
             <Button
               type="button"
               disabled={!resumeReady || isLoading}
-              onClick={handleAnalyse}
+              onClick={() => void handleAnalyse()}
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">

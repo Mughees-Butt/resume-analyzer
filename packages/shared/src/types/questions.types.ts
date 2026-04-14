@@ -7,6 +7,7 @@
 export type QuestionType = 'standard' | 'structural'
 
 export interface InterviewQuestion {
+  // Phase 5: populated from DB once questions are persisted. Not set by the generation endpoint.
   id?: string
   // Two-part question structure:
   // concept     — theory/knowledge check ("What is X?" / "What are the pros and cons of Y?")

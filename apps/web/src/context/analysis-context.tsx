@@ -51,3 +51,9 @@ export function useAnalysis(): AnalysisContextValue {
   }
   return ctx
 }
+
+// Note: AnalysisContext is in-memory React state — it does not survive a hard
+// page refresh. Navigating directly to /questions after a refresh will find an
+// empty context and the redirect guard will send the user back to /. This is
+// intentional; persistence is deferred to Phase 5 (DB-backed session storage).
+

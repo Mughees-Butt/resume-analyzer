@@ -42,7 +42,7 @@ function QuestionRow({
     >
       {/* Checkbox */}
       <input
-        id={`q-${question.topic}-${index}`}
+        id={`q-${question.topic.replace(/\s+/g, '-').toLowerCase()}-${index}`}
         type="checkbox"
         checked={question.asked}
         onChange={onToggle}
