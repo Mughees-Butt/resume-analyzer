@@ -91,9 +91,9 @@ export async function analyseResume(
 // ── Question generation (Phase 3) ─────────────────────────────────────────────
 
 // Send an extracted CandidateProfile + optional JD to Claude for question generation.
-// Returns 4–5 categories × 3 tiers × 5 questions (60–75 questions total).
-// Each question has concept (theory) + application (implementation follow-up).
-// Mode 2 (with JD): categories are weighted toward JD gaps.
+// Returns a flat 15-question set: 5 beginner + 5 intermediate + 4 standard expert + 1 structural expert.
+// Each question has concept (theory) + application (follow-up) + hint (interviewer-only).
+// Mode 2 (with JD): topics weighted toward JD gaps.
 export async function generateQuestions(
   profile: CandidateProfile,
   jobDescription?: string,

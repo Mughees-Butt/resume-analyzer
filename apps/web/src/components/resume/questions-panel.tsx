@@ -207,13 +207,22 @@ export function QuestionsPanel() {
               {mode === 'jd' ? 'Tailored to job description' : 'Based on resume profile'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            className="text-xs text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400"
-          >
-            ← Back to profile
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => void handleGenerate()}
+              className="text-xs text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400"
+            >
+              Regenerate
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className="text-xs text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400"
+            >
+              ← Back to profile
+            </button>
+          </div>
         </div>
 
         <TierSection

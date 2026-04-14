@@ -11,9 +11,9 @@ export class QuestionsController {
   // ─────────────────────────────────────────────────────────────
   // POST /api/questions/generate
   // Accepts an extracted CandidateProfile + optional job description.
-  // Returns a structured InterviewQuestions set:
-  //   4–5 categories × 3 tiers × 5 questions = 60–75 questions total.
-  // Each question has concept (theory) + application (implementation follow-up).
+  // Returns a flat 15-question InterviewQuestions set:
+  //   5 beginner + 5 intermediate + 4 standard expert + 1 structural expert.
+  // Each question has concept (theory) + application (follow-up) + hint (interviewer-only).
   // All questions start with asked: false for session tracking.
   // ─────────────────────────────────────────────────────────────
   @Post('generate')

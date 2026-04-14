@@ -4,6 +4,7 @@
 // categories toward the JD gaps identified in Mode 2.
 
 import { IsObject, IsOptional, IsString, MinLength } from 'class-validator'
+import { Transform } from 'class-transformer'
 import type { CandidateProfile } from '@resume-analyzer/shared'
 
 export class GenerateQuestionsDto {
@@ -14,6 +15,7 @@ export class GenerateQuestionsDto {
   profile!: CandidateProfile
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(20, { message: 'Job description is too short to be useful.' })
   jobDescription?: string

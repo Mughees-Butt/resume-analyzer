@@ -1,4 +1,10 @@
+import type { Metadata } from 'next'
 import { QuestionsPanel } from '@/components/resume/questions-panel'
+
+export const metadata: Metadata = {
+  title: 'Interview Questions | Resume Analyzer',
+  description: 'Tiered interview questions generated from the candidate profile.',
+}
 
 export default function QuestionsPage() {
   return (
